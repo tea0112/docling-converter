@@ -127,16 +127,14 @@ PAGE_RANGE=1-3 python3 run_nim_vlm.py doc.pdf
 
 ## Two-pass mode: VLM + text post-processing
 
-Post-processing is enabled **by default**. The script first calls the VLM to extract text from each image,
-then (if `TEXT_API_KEY` is configured) calls a text-only model to format the output as **Obsidian Flavored Markdown**
-(callouts, `%%` page separators, wikilink-safe headings, etc.):
+Post-processing is **disabled by default** (VLM-only output). Use `--post-process` to enable it:
 
 ```bash
-# Post-processing is on by default; disable it with --no-post-process
-python3 run_nim_vlm.py doc.pdf --no-post-process
+# Enable post-processing to format output as Obsidian markdown
+python3 run_nim_vlm.py doc.pdf --post-process
 ```
 
-If `TEXT_API_KEY` is not set, the script prints a warning and falls back to VLM-only (single-pass) mode.
+If `TEXT_API_KEY` is not set when `--post-process` is used, the script prints a warning and skips Pass 2.
 
 **Generation settings per pass:**
 
@@ -223,7 +221,7 @@ VLM_PROVIDER=openai \
 If the output quality seems off (missing content, generic descriptions, odd formatting), run without post-processing to isolate the VLM-only output:
 
 ```bash
-python3 run_nim_vlm.py document.pdf --no-post-process
+python3 run_nim_vlm.py document.pdf
 ```
 
-This bypasses Pass 2 (text formatting) and shows exactly what the VLM extracted before any reformatting. Use this to determine if issues originate from extraction (Pass 1) or formatting (Pass 2).
+Post-processing is disabled by default, so the above gives you the raw VLM extraction before any reformatting. Use this to determine if issues originate from extraction (Pass 1) or formatting (Pass 2). Then add `--post-process` once the raw output looks correct.

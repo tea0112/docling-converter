@@ -760,11 +760,11 @@ def main() -> None:
         ),
     )
     parser.add_argument(
-        "--no-post-process",
-        dest="no_post_process",
+        "--post-process",
+        dest="post_process",
         action="store_true",
         default=False,
-        help="Disable the post-processing pass (post-processing is enabled by default).",
+        help="Enable post-processing pass to format output as Obsidian markdown (disabled by default).",
     )
     parser.add_argument(
         "--output",
@@ -865,7 +865,7 @@ def main() -> None:
             tmp_paths.append(tmp_path)
 
         # Determine whether to run post-processing pass
-        post_process_enabled = not args.no_post_process
+        post_process_enabled = args.post_process
 
         text_provider: LLMProvider | None = None
         if post_process_enabled:

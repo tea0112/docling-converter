@@ -455,6 +455,7 @@ class TestPostProcessFlag(unittest.TestCase):
                     with patch.object(sys, "argv", [
                         "run_nim_vlm.py",
                         tmp_img,
+                        "--post-process",
                     ]):
                         with patch.dict(os.environ, {
                             "NVIDIA_API_KEY": "test_key",
@@ -462,11 +463,11 @@ class TestPostProcessFlag(unittest.TestCase):
                         }, clear=False):
                             run_nim_vlm.main()
 
-        # Two passes: VLM + text (post-processing is on by default)
+        # Two passes: VLM + text (--post-process enables pass 2)
         self.assertEqual(call_count[0], 2)
 
     def test_no_post_process_flag_single_pass(self):
-        """With --no-post-process, only the VLM pass runs."""
+        """Without --post-process (default), only the VLM pass runs."""
         import run_nim_vlm
         import shutil
         import tempfile
@@ -490,16 +491,15 @@ class TestPostProcessFlag(unittest.TestCase):
                 with patch.object(sys, "argv", [
                     "run_nim_vlm.py",
                     tmp_img,
-                    "--no-post-process",
                 ]):
                     with patch.dict(os.environ, {"NVIDIA_API_KEY": "test_key"}, clear=False):
                         run_nim_vlm.main()
 
-        # Only VLM pass — --no-post-process disables post-processing
+        # Only VLM pass — post-processing is disabled by default
         self.assertEqual(call_count[0], 1)
 
     def test_post_process_without_text_api_key_skips_pass2(self):
-        """With post-processing on (default) but no text API key, only VLM pass runs."""
+        """With --post-process but no text API key, only VLM pass runs."""
         import run_nim_vlm
         import shutil
         import tempfile
