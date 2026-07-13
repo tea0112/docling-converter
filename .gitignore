@@ -1,0 +1,24 @@
+# Environment — NEVER commit these
+.env
+.env.local
+
+# macOS zone identifier artifacts (created when dragging files in Finder)
+*Zone.Identifier
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Editor
+.vscode/
+.idea/
+*.swp
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyc
+.pytest_cache/
+*.egg-info/
+dist/
+build/
