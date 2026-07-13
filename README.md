@@ -127,14 +127,36 @@ PAGE_RANGE=1-3 python3 run_nim_vlm.py doc.pdf
 
 ## Two-pass mode: VLM + text post-processing
 
-Post-processing is **disabled by default** (VLM-only output). Use `--post-process` to enable it:
+By default the script outputs raw VLM markdown (Pass 1 only). Use `--post-process` to enable a second text-only formatting pass that reformats the output as **Obsidian Flavored Markdown**.
 
 ```bash
-# Enable post-processing to format output as Obsidian markdown
+# Pass 1 (VLM) → raw markdown
+python3 run_nim_vlm.py doc.pdf
+
+# Pass 1 (VLM) + Pass 2 (Obsidian formatting) → cleaner output
 python3 run_nim_vlm.py doc.pdf --post-process
 ```
 
 If `TEXT_API_KEY` is not set when `--post-process` is used, the script prints a warning and skips Pass 2.
+
+### When to use `--post-process`
+
+Use `--post-process` when you want polished, human-readable output:
+
+- **Obsidian Flavored Markdown**: `> [!note]` callouts, `%% Page N %%` page separators, wikilink-safe headings
+- **Cleaner structure**: better formatting for tables, code blocks, headings, and LaTeX math
+- **Ready to paste into Obsidian**: output is immediately usable without manual reformatting
+
+The second pass runs at `temperature=0.0` (fully deterministic) and is instructed to preserve all original content verbatim — it only restructures formatting, never rewrites or omits content.
+
+### When NOT to use `--post-process`
+
+Use the default VLM-only output when:
+
+- **Bulk processing**: each pass is an extra API call — `--post-process` roughly doubles cost and time
+- **Maximum fidelity**: for byte-exact preservation of the VLM's raw output, skip Pass 2
+- **Downstream processing**: if another system (Obsidian plugin, pipeline, etc.) handles formatting, VLM-only avoids double-formatting
+- **Debugging**: VLM-only output makes it easier to tell whether an issue comes from extraction (Pass 1) or formatting (Pass 2)
 
 **Generation settings per pass:**
 
