@@ -27,4 +27,5 @@ build/
 .omo/
 *.pdf
 *.md
+!README.md
 Attachments/

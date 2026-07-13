@@ -233,8 +233,9 @@ class _BaseProvider:
         stream: bool,
         model: str | None,
         system_prompt: str | None,
+        gen_overrides: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
-        return {
+        base = {
             "max_tokens": 8192,
             "temperature": 0.3,
             "top_p": 1,
@@ -244,6 +245,9 @@ class _BaseProvider:
             "stream": stream,
             "model": model or self.model,
         }
+        if gen_overrides:
+            base.update(gen_overrides)
+        return base
 
     def make_request(
         self,
@@ -251,15 +255,16 @@ class _BaseProvider:
         stream: bool,
         model: str | None,
         system_prompt: str | None,
+        gen_overrides: dict[str, Any] | None = None,
     ) -> requests.Response:
         headers = self._build_headers(stream)
-        payload = self._build_payload(content, stream, model, system_prompt)
+        payload = self._build_payload(content, stream, model, system_prompt, gen_overrides)
         response = requests.post(
             self.chat_url(),
             headers=headers,
             json=payload,
             stream=stream,
-            timeout=120,
+            timeout=(300, 600),  # (connect_timeout, read_timeout) — 5min connect, 10min read
         )
         return response
 
@@ -656,6 +661,7 @@ def _chat_with_media(
     model: str | None = None,
     system_prompt: str | None = None,
     buffer: list[str] | None = None,
+    gen_overrides: dict[str, Any] | None = None,
 ) -> None:
     """Send media files + query to the VLM provider and stream/print the response."""
 
@@ -679,6 +685,7 @@ def _chat_with_media(
         stream=stream,
         model=model,
         system_prompt=system_prompt,
+        gen_overrides=gen_overrides,
     )
 
     if not stream:
@@ -701,6 +708,7 @@ def _chat_text_only(
     stream: bool = True,
     model: str | None = None,
     system_prompt: str | None = None,
+    gen_overrides: dict[str, Any] | None = None,
 ) -> None:
     """Send a text-only query to the text provider and stream the response."""
     response = provider.make_request(
@@ -708,6 +716,7 @@ def _chat_text_only(
         stream=stream,
         model=model,
         system_prompt=system_prompt,
+        gen_overrides=gen_overrides,
     )
 
     if not stream:
@@ -751,22 +760,11 @@ def main() -> None:
         ),
     )
     parser.add_argument(
-        "--post-process",
-        dest="post_process",
-        action="store_true",
-        default=False,
-        help=(
-            "Enable a second text-only pass to improve the VLM output and format as Obsidian markdown. "
-            "Pass 1: VLM extracts text from the image. "
-            "Pass 2 (this flag): a text-only model formats the output for Obsidian (callouts, %% page separators, etc.)."
-        ),
-    )
-    parser.add_argument(
         "--no-post-process",
         dest="no_post_process",
         action="store_true",
         default=False,
-        help="Explicitly disable the post-processing pass (overrides --post-process).",
+        help="Disable the post-processing pass (post-processing is enabled by default).",
     )
     parser.add_argument(
         "--output",
@@ -867,7 +865,7 @@ def main() -> None:
             tmp_paths.append(tmp_path)
 
         # Determine whether to run post-processing pass
-        post_process_enabled = args.no_post_process is False and args.post_process is True
+        post_process_enabled = not args.no_post_process
 
         text_provider: LLMProvider | None = None
         if post_process_enabled:
@@ -875,8 +873,9 @@ def main() -> None:
             text_api_key = os.environ.get(text_provider.api_key_env, "")
             if not text_api_key:
                 sys.stderr.write(
-                    f"Warning: --post-process set but {text_provider.api_key_env} not set. "
-                    "Skipping post-processing pass.\n"
+                    f"\nWarning: TEXT_API_KEY not set (tried env var: {text_provider.api_key_env}). "
+                    "Post-processing DISABLED — falling back to VLM-only pass. "
+                    "Set TEXT_API_KEY to enable formatting.\n"
                 )
                 sys.stderr.flush()
                 post_process_enabled = False
@@ -894,13 +893,26 @@ def main() -> None:
                 sys.stderr.write(f"\rPass 1/2 — Page {i+1}/{total}...")
                 sys.stderr.flush()
                 page_buf: list[str] = []
-                _chat_with_media(
-                    provider=vlm_provider,
-                    media_files=[tmp_path],
-                    query=PROMPT_VLM,
-                    stream=True,
-                    buffer=page_buf,
-                )
+                max_retries = 3
+                for attempt in range(max_retries):
+                    try:
+                        _chat_with_media(
+                            provider=vlm_provider,
+                            media_files=[tmp_path],
+                            query=PROMPT_VLM,
+                            stream=True,
+                            buffer=page_buf,
+                            gen_overrides={"temperature": 0.1, "top_p": 0.9},
+                        )
+                        break
+                    except (requests.exceptions.ConnectionError, requests.exceptions.Timeout, requests.exceptions.ReadTimeout) as e:
+                        if attempt < max_retries - 1:
+                            sys.stderr.write(f" (retry {attempt+2}/{max_retries}...)")
+                            sys.stderr.flush()
+                        else:
+                            sys.stderr.write(f"\nAPI error after {max_retries} attempts: {e}\n")
+                            sys.stderr.flush()
+                            sys.exit(EXIT_API_ERROR)
                 page_text = "".join(page_buf)
                 # Remove any ![[...]] Obsidian wikilinks — they reference non-existent files
                 page_text = re.sub(r'\n*!\[\[.*?\]\]\s*\n?', '\n', page_text)
@@ -920,11 +932,24 @@ def main() -> None:
                     sys.stderr.flush()
                     page_markdown = raw_markdown.strip()
                     query = f"{post_process_prompt}\n\n---\n\n{page_markdown}"
-                    _chat_text_only(
-                        provider=text_provider,
-                        query=query,
-                        stream=True,
-                    )
+                    max_retries_pp = 3
+                    for attempt in range(max_retries_pp):
+                        try:
+                            _chat_text_only(
+                                provider=text_provider,
+                                query=query,
+                                stream=True,
+                                gen_overrides={"temperature": 0.0},
+                            )
+                            break
+                        except (requests.exceptions.ConnectionError, requests.exceptions.Timeout, requests.exceptions.ReadTimeout) as e:
+                            if attempt < max_retries_pp - 1:
+                                sys.stderr.write(f" (retry {attempt+2}/{max_retries_pp}...)")
+                                sys.stderr.flush()
+                            else:
+                                sys.stderr.write(f"\nPost-process error after {max_retries_pp} attempts: {e}\n")
+                                sys.stderr.flush()
+                                sys.exit(EXIT_API_ERROR)
                 sys.stderr.write(f"\r{' ' * 50}\r")
                 sys.stderr.flush()
             else:
