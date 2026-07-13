@@ -217,3 +217,13 @@ VLM_PROVIDER=openai \
   OPENAI_MODEL=llama-3.2-vision \
   python3 run_nim_vlm.py doc.pdf
 ```
+
+## Diagnostic Mode
+
+If the output quality seems off (missing content, generic descriptions, odd formatting), run without post-processing to isolate the VLM-only output:
+
+```bash
+python3 run_nim_vlm.py document.pdf --no-post-process
+```
+
+This bypasses Pass 2 (text formatting) and shows exactly what the VLM extracted before any reformatting. Use this to determine if issues originate from extraction (Pass 1) or formatting (Pass 2).

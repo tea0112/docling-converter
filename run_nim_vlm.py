@@ -902,7 +902,7 @@ def main() -> None:
                             query=PROMPT_VLM,
                             stream=True,
                             buffer=page_buf,
-                            gen_overrides={"temperature": 0.1, "top_p": 0.9},
+                            gen_overrides={"temperature": 0.1, "top_p": 0.9, "max_tokens": 16384},
                         )
                         break
                     except (requests.exceptions.ConnectionError, requests.exceptions.Timeout, requests.exceptions.ReadTimeout) as e:
