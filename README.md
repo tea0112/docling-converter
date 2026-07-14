@@ -83,21 +83,6 @@ Set `VLM_PROVIDER` (Pass 1, VLM) and `TEXT_PROVIDER` (Pass 2, text post-processi
 |---|---|---|---|
 | `POST_PROCESS_PROMPT` | No | *(built-in)* | Prompt for Obsidian formatting in Pass 2 |
 
-### Backward-compatible aliases
-
-These old `NIM_*` / `NIM_TEXT_*` / `NIM_*` vars still work:
-
-| Old variable | New variable |
-|---|---|
-| `NIM_ENDPOINT` | `VLM_BASE_URL` |
-| `NIM_VLM_MODEL` | `VLM_MODEL` |
-| `NIM_SYSTEM_PROMPT` | `VLM_SYSTEM_PROMPT` |
-| `NIM_TEXT_ENDPOINT` | `TEXT_BASE_URL` |
-| `NIM_TEXT_MODEL` | `TEXT_MODEL` |
-| `NIM_TEXT_SYSTEM_PROMPT` | `TEXT_SYSTEM_PROMPT` |
-| `NIM_TEXT_API_KEY` | Set `TEXT_API_KEY_ENV=NIM_TEXT_API_KEY` |
-| `NIM_PAGE_RANGE` | `PAGE_RANGE` |
-
 You can copy `.env.example` to `.env` and fill in your values, then source it:
 
 ```bash
