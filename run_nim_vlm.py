@@ -492,43 +492,31 @@ def _encode_base64(media_file: str) -> str:
 
 
 def _load_pdf_pages(file_path: str, page_indices: set[int] | None = None) -> list[Image.Image]:
-    """Convert each page of a PDF into a list of PIL Images using docling or PyMuPDF.
+    """Convert each page of a PDF into a list of PIL Images using PyMuPDF.
 
-    Args:
-        file_path: Path to the PDF file.
-        page_indices: Optional set of 0-based page indices to include.
-                     If None, all pages are returned.
-                     Out-of-range indices cause exit with code 2.
+    Docling was previously attempted but its 2.x API is incompatible with the
+    legacy code path, so PyMuPDF is used as the sole renderer — it is reliable
+    and already installed.
     """
+    import fitz  # PyMuPDF
 
-    if not _DOCLING_AVAILABLE:
-        # Minimal fallback using PyMuPDF (fitz) if docling is not installed
-        try:
-            import fitz  # PyMuPDF
-
-            doc = fitz.open(file_path)
-            total_pages = len(doc)
-            if page_indices is not None:
-                max_idx = max(page_indices)
-                if max_idx >= total_pages:
-                    sys.stderr.write(f"Error: page {max_idx + 1} is out of range (PDF has {total_pages} pages).\n")
-                    sys.stderr.flush()
-                    sys.exit(EXIT_BAD_INPUT)
-            pages: list[Image.Image] = []
-            page_nums = page_indices if page_indices is not None else range(total_pages)
-            for page_num in page_nums:
-                page = doc[page_num]
-                mat = fitz.Matrix(3.0, 3.0)  # 3x zoom (~216 DPI) for better text/math readability
-                pix = page.get_pixmap(matrix=mat)
-                data = pix.tobytes("png")
-                pages.append(Image.open(BytesIO(data)))
-            return pages
-        except ImportError:
-            sys.stderr.write(
-                "Error: Processing PDF requires either the 'docling' or 'pymupdf' library.\n"
-            )
+    doc = fitz.open(file_path)
+    total_pages = len(doc)
+    if page_indices is not None:
+        max_idx = max(page_indices)
+        if max_idx >= total_pages:
+            sys.stderr.write(f"Error: page {max_idx + 1} is out of range (PDF has {total_pages} pages).\n")
             sys.stderr.flush()
-            sys.exit(EXIT_API_ERROR)
+            sys.exit(EXIT_BAD_INPUT)
+    pages: list[Image.Image] = []
+    page_nums = page_indices if page_indices is not None else range(total_pages)
+    for page_num in page_nums:
+        page = doc[page_num]
+        mat = fitz.Matrix(3.0, 3.0)  # 3x zoom (~216 DPI) for better text/math readability
+        pix = page.get_pixmap(matrix=mat)
+        data = pix.tobytes("png")
+        pages.append(Image.open(BytesIO(data)))
+    return pages
 
 
 def _extract_pdf_images(
@@ -563,52 +551,6 @@ def _extract_pdf_images(
                 pass
         result[page_idx] = page_imgs
     return result
-
-
-    # --- docling path ---
-    from docling.datamodel.pipeline_options import PdfPipelineOptions
-    from docling.datamodel.base_models import InputFormat
-    from docling.pipeline.base_pipeline import BasePipeline
-
-    pipeline_options = PdfPipelineOptions()
-    pipeline_options.images_in_separate_pages = True
-
-    pipeline = BasePipeline.from_options(
-        pipeline_options=pipeline_options,
-        format_options={
-            InputFormat.PDF: pipeline_options,
-        },
-    )
-
-    from docling.conversion import PdfContext
-
-    ctx = PdfContext(file_path, [], pipeline=pipeline)
-    pages_info = ctx.get_pages()
-
-    # Check out-of-range for docling path
-    if page_indices is not None:
-        total_pages = len(pages_info)
-        max_idx = max(page_indices)
-        if max_idx >= total_pages:
-            sys.stderr.write(f"Error: page {max_idx + 1} is out of range (PDF has {total_pages} pages).\n")
-            sys.stderr.flush()
-            sys.exit(EXIT_BAD_INPUT)
-
-    images = []
-    for page_info in pages_info.values():
-        # page_info.page_number is 1-based; convert to 0-based for comparison
-        zero_based = page_info.page_number - 1
-        if page_indices is not None and zero_based not in page_indices:
-            continue
-        try:
-            from docling.util.picture import convert_picture_to_pil_image
-
-            img = convert_picture_to_pil_image(page_info)
-            images.append(img)
-        except Exception as e:
-            sys.stderr.write(f"Warning: failed to render page {page_info.page_number}: {e}\n")
-            sys.stderr.flush()
-    return images
 
 
 def _open_image(file_path: str) -> Image.Image:
