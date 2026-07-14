@@ -1,0 +1,15 @@
+[project]
+name = "docling-converter"
+version = "0.1.0"
+description = "VLM PDF & Image Text Extractor using NVIDIA NIM or OpenAI-compatible APIs"
+requires-python = ">=3.9"
+dependencies = [
+    "pillow",
+    "requests",
+    "docling",
+    "pymupdf",
+]
+
+[project.optional-dependencies]
+pdf-docling = ["docling"]
+pdf-pymupdf = ["pymupdf"]

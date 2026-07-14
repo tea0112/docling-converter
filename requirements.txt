@@ -1,0 +1,7 @@
+# Core
+pillow
+requests
+
+# PDF support (both installed; script picks docling, falls back to pymupdf)
+docling
+pymupdf
