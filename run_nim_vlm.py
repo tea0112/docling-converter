@@ -115,13 +115,16 @@ EXIT_BAD_INPUT = 2
 EXIT_API_ERROR = 3
 
 PROMPT_VLM = (
-    "Extract ALL content from this image as markdown. "
-    "Include any text, equations, and tables. "
+    "Extract ALL content from this image as plain markdown. "
+    "Preserve every word, number, and character exactly as shown. "
+    "Do NOT add any header, title, subtitle, table of contents, or section numbering that does not explicitly appear in the image. "
+    "Do NOT repeat or rephrase any content. "
+    "For tables: reproduce them as markdown table rows and columns exactly as rendered. "
     "For any diagrams, figures, charts, or visual elements: describe them ONLY in prose text. "
     "For example: 'A right triangle with vertices labeled A, B, and the origin. A horizontal arrow points right labeled x. A diagonal arrow slopes upward from the origin toward A, with a perpendicular dashed line dropping to the x-axis.' "
     "Do NOT draw ASCII art, do NOT use backticks or code fences for diagrams, "
     "and do NOT create Obsidian wikilinks like ![[...]] for figures. "
-    "Preserve all text, equations, and formatting exactly as shown."
+    "Output ONLY the extracted content — no meta-commentary, no summary, no prefix like 'Here is the content'."
 )
 
 # ---------------------------------------------------------------------------
