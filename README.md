@@ -72,10 +72,10 @@ Set `VLM_PROVIDER` (Pass 1, VLM) and `TEXT_PROVIDER` (Pass 2, text post-processi
 | Variable | Required | Default | Description |
 |---|---|---|---|
 | `TEXT_PROVIDER` | No | `nvidia` | Provider: `nvidia` or `openai` |
-| `TEXT_API_KEY_ENV` | No | *(varies)* | Env var name holding the text API key |
+| `TEXT_API_KEY_ENV` | No | `TEXT_API_KEY` | Env var name for the text API key. Set `TEXT_API_KEY=...` in .env. |
 | `TEXT_BASE_URL` | No | *(same as VLM)* | API base URL |
 | `TEXT_MODEL` | No | `meta/llama-3.1-nemotron-32b-instruct` | Text model |
-| `TEXT_SYSTEM_PROMPT` | No | `/think` | System prompt for text pass |
+| `TEXT_SYSTEM_PROMPT` | No | `/think` | Only used for Pass 2 (post-processing). Pass 1 VLM uses `VLM_SYSTEM_PROMPT` (default: empty). |
 
 ### Post-processing
 
@@ -163,7 +163,7 @@ Use the default VLM-only output when:
 | Pass | Temperature | top_p | Notes |
 |---|---|---|---|
 | Pass 1 — VLM | `0.1` | `0.9` | Low temperature for accurate extraction |
-| Pass 2 — text | `0.0` | — | Deterministic formatting |
+| Pass 2 — text | `0.0` | `1` (default) | Deterministic formatting |
 
 **Retry logic:** Both passes retry up to 3 times on timeout or connection error before failing.
 
@@ -173,7 +173,7 @@ Use the default VLM-only output when:
 
 ## Obsidian output format
 
-When post-processing is enabled (default), the text pass formats output as Obsidian Flavored Markdown:
+When `--post-process` is enabled, the text pass formats output as Obsidian Flavored Markdown:
 
 - **Callouts**: `> [!note]`, `> [!warning]`, `> [!tip]`, etc.
 - **Page separators**: `%% Page N — ... %%`
